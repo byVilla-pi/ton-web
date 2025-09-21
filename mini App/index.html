@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Control Panel</title>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f3f4f6;
+        }
+        .circle-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Container -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-sm w-full space-y-6 text-center">
+        <h1 class="text-2xl font-bold">Security System Control</h1>
+
+        <!-- Status Label -->
+        <div id="status-container" class="bg-black text-white p-4 rounded-xl font-medium transition-colors duration-300">
+            <span id="status-label">System is stopped.</span>
+        </div>
+
+        <!-- Buttons Container -->
+        <div class="flex flex-row space-x-4 justify-center">
+            <!-- Start Button (Circle with Play Icon) -->
+            <button id="start-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
+                                      bg-green-500 hover:bg-green-600 text-white focus:ring-green-500">
+                <i class="fas fa-play fa-2x"></i>
+            </button>
+
+            <!-- Stop Button (Circle with Stop Icon) -->
+            <button id="stop-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
+                                      bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
+                <i class="fas fa-stop fa-2x"></i>
+            </button>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="mt-4 text-sm text-gray-500 dark:text-gray-400"></div>
+
+    </div>
+
+    <script>
+        // Check if the Telegram WebApp object is available
+        if (window.Telegram && window.Telegram.WebApp) {
+            // Inform the Telegram app that the Web App is ready to be displayed
+            Telegram.WebApp.ready();
+            // Expand the Web App to occupy the whole screen
+            Telegram.WebApp.expand();
+
+            // Set up a listener for data received from the bot
+            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
+                const data = event.data;
+                console.log('Received data from bot:', data);
+
+                // Update the system status based on the data received
+                if (data === 'running') {
+                    isSystemRunning = true;
+                } else if (data === 'stopped') {
+                    isSystemRunning = false;
+                }
+                updateUI();
+                showMessage('Status updated by bot.');
+            });
+
+        }
+
+        // Get references to DOM elements
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const statusLabel = document.getElementById('status-label');
+        const messageBox = document.getElementById('message-box');
+
+        // State variable to track the system's status
+        let isSystemRunning = false;
+
+        /**
+         * Updates the UI based on the system's current status.
+         */
+        function updateUI() {
+            if (isSystemRunning) {
+                // System is running: enable stop, disable start
+                statusLabel.textContent = 'System is running.';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                // System is stopped: enable start, disable stop
+                statusLabel.textContent = 'System is stopped.';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        /**
+         * Displays a message to the user in the message box.
+         * @param {string} message The message to display.
+         */
+        function showMessage(message) {
+            messageBox.textContent = message;
+            setTimeout(() => {
+                messageBox.textContent = '';
+            }, 3000); // Clear message after 3 seconds
+        }
+
+        // Event listener for the "Start" button
+        startBtn.addEventListener('click', () => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Set the local state and send the command
+                isSystemRunning = true;
+                updateUI();
+                Telegram.WebApp.sendData('/up');
+                showMessage('Sending command: /up');
+            } else {
+                // Fallback for testing outside Telegram
+                showMessage('Telegram WebApp is not available. System started.');
+                isSystemRunning = true;
+                updateUI();
+            }
+        });
+
+        // Event listener for the "Stop" button
+        stopBtn.addEventListener('click', () => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                // Set the local state and send the command
+                isSystemRunning = false;
+                updateUI();
+                Telegram.WebApp.sendData('/down');
+                showMessage('Sending command: /down');
+            } else {
+                // Fallback for testing outside Telegram
+                showMessage('Telegram WebApp is not available. System stopped.');
+                isSystemRunning = false;
+                updateUI();
+            }
+        });
+
+        // Initial UI setup on page load
+        updateUI();
+    </script>
+
+</body>
+</html>
