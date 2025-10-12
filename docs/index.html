@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Control Panel</title>
-    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <style>
+        /* Custom styles for appearance */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background-color: #f3f4f6;
         }
         .circle-button {
             width: 80px;
@@ -31,84 +28,79 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Main Container -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-sm w-full space-y-6 text-center">
         <h1 class="text-2xl font-bold">Security System Control</h1>
 
-        <!-- Status Label -->
-        <div id="status-container" class="bg-black text-white p-4 rounded-xl font-medium transition-colors duration-300">
-            <span id="status-label">System is stopped.</span>
+        <div id="status-container" class="bg-black text-white p-4 rounded-xl font-medium transition-colors duration-500">
+            <span id="status-label">Loading status...</span>
         </div>
 
-        <!-- Buttons Container -->
         <div class="flex flex-row space-x-4 justify-center">
-            <!-- Start Button (Circle with Play Icon) -->
-            <button id="start-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
-                                      bg-green-500 hover:bg-green-600 text-white focus:ring-green-500">
+            <button id="start-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-wait
+                                         bg-green-500 hover:bg-green-600 text-white focus:ring-green-500" disabled>
                 <i class="fas fa-play fa-2x"></i>
             </button>
 
-            <!-- Stop Button (Circle with Stop Icon) -->
-            <button id="stop-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
-                                      bg-red-500 hover:bg-red-600 text-white focus:ring-red-500">
+            <button id="stop-btn" class="circle-button transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-wait
+                                         bg-red-500 hover:bg-red-600 text-white focus:ring-red-500" disabled>
                 <i class="fas fa-stop fa-2x"></i>
             </button>
         </div>
 
-        <!-- Message Box -->
-        <div id="message-box" class="mt-4 text-sm text-gray-500 dark:text-gray-400"></div>
+        <div id="message-box" class="mt-4 text-sm text-gray-500 dark:text-gray-400 min-h-[1.5rem]"></div>
 
     </div>
 
     <script>
-        // Check if the Telegram WebApp object is available
-        if (window.Telegram && window.Telegram.WebApp) {
-            // Inform the Telegram app that the Web App is ready to be displayed
-            Telegram.WebApp.ready();
-            // Expand the Web App to occupy the whole screen
-            Telegram.WebApp.expand();
-
-            // Set up a listener for data received from the bot
-            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
-                const data = event.data;
-                console.log('Received data from bot:', data);
-
-                // Update the system status based on the data received
-                if (data === 'running') {
-                    isSystemRunning = true;
-                } else if (data === 'stopped') {
-                    isSystemRunning = false;
-                }
-                updateUI();
-                showMessage('Status updated by bot.');
-            });
-
-        }
 
         // Get references to DOM elements
         const startBtn = document.getElementById('start-btn');
         const stopBtn = document.getElementById('stop-btn');
         const statusLabel = document.getElementById('status-label');
+        const statusContainer = document.getElementById('status-container');
         const messageBox = document.getElementById('message-box');
 
         // State variable to track the system's status
         let isSystemRunning = false;
 
         /**
-         * Updates the UI based on the system's current status.
+         * Updates the UI based on the system's current confirmed status.
+         * This function handles the core requirement of enabling/disabling buttons.
          */
         function updateUI() {
+            // Tailwind classes for visual feedback
+            const runningClasses = ['bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/50'];
+            const stoppedClasses = ['bg-black', 'text-white', 'shadow-lg', 'shadow-gray-700/50'];
+
             if (isSystemRunning) {
-                // System is running: enable stop, disable start
-                statusLabel.textContent = 'System is running.';
-                startBtn.disabled = true;
+                // System is running: disable start, enable stop
+                statusLabel.textContent = 'System is RUNNING.';
+                startBtn.disabled = true;  // REQUIREMENT MET: Start disabled when running
                 stopBtn.disabled = false;
+                
+                // Visual update
+                statusContainer.classList.remove(...stoppedClasses);
+                statusContainer.classList.add(...runningClasses);
             } else {
                 // System is stopped: enable start, disable stop
-                statusLabel.textContent = 'System is stopped.';
+                statusLabel.textContent = 'System is STOPPED.';
                 startBtn.disabled = false;
-                stopBtn.disabled = true;
+                stopBtn.disabled = true;   // REQUIREMENT MET: Stop disabled when stopped
+
+                // Visual update
+                statusContainer.classList.remove(...runningClasses);
+                statusContainer.classList.add(...stoppedClasses);
             }
+        }
+        
+        /**
+         * Temporarily disables or enables action buttons. Used while waiting for bot response.
+         * @param {boolean} disabled True to disable buttons, false to enable.
+         */
+        function setButtonsDisabled(disabled) {
+            // Disable both buttons to prevent race conditions while waiting for bot response
+            startBtn.disabled = disabled;
+            stopBtn.disabled = disabled;
         }
 
         /**
@@ -117,45 +109,88 @@
          */
         function showMessage(message) {
             messageBox.textContent = message;
+            // Clear message after 3 seconds
             setTimeout(() => {
-                messageBox.textContent = '';
-            }, 3000); // Clear message after 3 seconds
+                if (messageBox.textContent === message) {
+                    messageBox.textContent = '';
+                }
+            }, 3000); 
         }
+
+        // --- Telegram Web App SDK Logic ---
+
+        if (window.Telegram && window.Telegram.WebApp) {
+            // 1. Core setup
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            Telegram.WebApp.MainButton.hide();
+
+            // 2. Listener for bot responses (CRITICAL for state sync)
+            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
+                const data = event.data ? event.data.trim().toLowerCase() : '';
+                console.log('Received data from bot:', data);
+
+                // Update the system status ONLY based on the bot's confirmation
+                if (data.includes('running')) {
+                    isSystemRunning = true;
+                    showMessage('Bot confirmed: System is now running.');
+                } else if (data.includes('stopped')) {
+                    isSystemRunning = false;
+                    showMessage('Bot confirmed: System is now stopped.');
+                } else {
+                    showMessage('Bot responded with: ' + event.data);
+                }
+
+                // Re-enable buttons (as controlled by updateUI) and refresh UI
+                updateUI();
+                // Ensure buttons become responsive after status update (if not running a command)
+                setButtonsDisabled(false); 
+            });
+
+            // 3. Initial Status Request on load
+            // Temporarily disable buttons until the first status is received
+            setButtonsDisabled(true); 
+            Telegram.WebApp.sendData('/status');
+            showMessage('Requesting initial system status...');
+
+        } else {
+            // Fallback for testing outside Telegram
+            showMessage('Telegram WebApp is NOT available. Using local simulation mode.');
+            updateUI(); // Run UI update for local simulation
+        }
+
+        // --- Event Listeners for UI Buttons ---
 
         // Event listener for the "Start" button
         startBtn.addEventListener('click', () => {
-            if (window.Telegram && window.Telegram.WebApp) {
-                // Set the local state and send the command
-                isSystemRunning = true;
-                updateUI();
+            if (window.Telegram && window.Telegram.WebApp && !startBtn.disabled) {
+                setButtonsDisabled(true); // Lock buttons
                 Telegram.WebApp.sendData('/up');
-                showMessage('Sending command: /up');
-            } else {
-                // Fallback for testing outside Telegram
-                showMessage('Telegram WebApp is not available. System started.');
+                showMessage('Sending command: /up. Waiting for confirmation...');
+            } else if (!window.Telegram.WebApp) {
+                // Local simulation fallback
                 isSystemRunning = true;
                 updateUI();
+                showMessage('Simulation: System started.');
             }
         });
 
         // Event listener for the "Stop" button
         stopBtn.addEventListener('click', () => {
-            if (window.Telegram && window.Telegram.WebApp) {
-                // Set the local state and send the command
-                isSystemRunning = false;
-                updateUI();
+            if (window.Telegram && window.Telegram.WebApp && !stopBtn.disabled) {
+                setButtonsDisabled(true); // Lock buttons
                 Telegram.WebApp.sendData('/down');
-                showMessage('Sending command: /down');
-            } else {
-                // Fallback for testing outside Telegram
-                showMessage('Telegram WebApp is not available. System stopped.');
+                showMessage('Sending command: /down. Waiting for confirmation...');
+            } else if (!window.Telegram.WebApp) {
+                // Local simulation fallback
                 isSystemRunning = false;
                 updateUI();
+                showMessage('Simulation: System stopped.');
             }
         });
-
-        // Initial UI setup on page load
-        updateUI();
+        
+        // Initial UI setup on page load (shows default state/loading message)
+        updateUI(); 
     </script>
 
 </body>
