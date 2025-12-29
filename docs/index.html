@@ -57,11 +57,34 @@
         const startBtn = document.getElementById('start-btn');
         const stopBtn = document.getElementById('stop-btn');
         const statusLabel = document.getElementById('status-label');
-        const statusContainer = document.getElementById('status-container');
         const messageBox = document.getElementById('message-box');
 
         // State variable to track the system's status
         let isSystemRunning = false;
+        
+        // Check if the Telegram WebApp object is available
+        if (window.Telegram && window.Telegram.WebApp) {
+            // Inform the Telegram app that the Web App is ready to be displayed
+            Telegram.WebApp.ready();
+            // Expand the Web App to occupy the whole screen
+            Telegram.WebApp.expand();
+
+            // Set up a listener for data received from the bot
+            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
+                const data = event.data;
+                console.log('Received data from bot:', data);
+
+                // Update the system status based on the data received
+                if (data === 'running') {
+                    isSystemRunning = true;
+                } else if (data === 'stopped') {
+                    isSystemRunning = false;
+                }
+                updateUI();
+                showMessage('Status updated by bot.');
+            });
+
+        }
 
         /**
          * Updates the UI based on the system's current confirmed status.
