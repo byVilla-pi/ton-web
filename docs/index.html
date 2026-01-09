@@ -58,32 +58,30 @@
         const stopBtn = document.getElementById('stop-btn');
         const statusLabel = document.getElementById('status-label');
         const messageBox = document.getElementById('message-box');
+        const statusContainer = document.getElementById('status-container'); // Ensure this ID exists in your HTML
 
         // State variable to track the system's status
         let isSystemRunning = false;
-        
-        // Check if the Telegram WebApp object is available
-        if (window.Telegram && window.Telegram.WebApp) {
-            // Inform the Telegram app that the Web App is ready to be displayed
-            Telegram.WebApp.ready();
-            // Expand the Web App to occupy the whole screen
-            Telegram.WebApp.expand();
 
-            // Set up a listener for data received from the bot
-            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
-                const data = event.data;
-                console.log('Received data from bot:', data);
-
-                // Update the system status based on the data received
-                if (data === 'running') {
-                    isSystemRunning = true;
-                } else if (data === 'stopped') {
-                    isSystemRunning = false;
-                }
-                updateUI();
-                showMessage('Status updated by bot.');
-            });
-
+        // The API Helper Function
+        async function apiCall(endpoint, method = 'POST') {
+            const url = `${window.location.origin}${endpoint}`;
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Pass initData so the server can verify the user is who they say they are
+                        'X-Telegram-Init-Data': window.Telegram.WebApp.initData 
+                    }
+                });
+                if (!response.ok) throw new Error('Server error');
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showMessage('Error: Could not reach the server.');
+                return null;
+            }
         }
 
         /**
@@ -94,13 +92,11 @@
             // Tailwind classes for visual feedback
             const runningClasses = ['bg-green-600', 'text-white', 'shadow-lg', 'shadow-green-500/50'];
             const stoppedClasses = ['bg-black', 'text-white', 'shadow-lg', 'shadow-gray-700/50'];
-
             if (isSystemRunning) {
                 // System is running: disable start, enable stop
                 statusLabel.textContent = 'System is RUNNING.';
-                startBtn.disabled = true;  // REQUIREMENT MET: Start disabled when running
+                startBtn.disabled = true;  // Start disabled when running
                 stopBtn.disabled = false;
-                
                 // Visual update
                 statusContainer.classList.remove(...stoppedClasses);
                 statusContainer.classList.add(...runningClasses);
@@ -108,8 +104,7 @@
                 // System is stopped: enable start, disable stop
                 statusLabel.textContent = 'System is STOPPED.';
                 startBtn.disabled = false;
-                stopBtn.disabled = true;   // REQUIREMENT MET: Stop disabled when stopped
-
+                stopBtn.disabled = true;   // Stop disabled when stopped
                 // Visual update
                 statusContainer.classList.remove(...runningClasses);
                 statusContainer.classList.add(...stoppedClasses);
@@ -141,41 +136,24 @@
         }
 
         // --- Telegram Web App SDK Logic ---
-
         if (window.Telegram && window.Telegram.WebApp) {
             // 1. Core setup
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
-            Telegram.WebApp.MainButton.hide();
-
-            // 2. Listener for bot responses (CRITICAL for state sync)
-            Telegram.WebApp.onEvent('web_app_data_received', (event) => {
-                const data = event.data ? event.data.trim().toLowerCase() : '';
-                console.log('Received data from bot:', data);
-
-                // Update the system status ONLY based on the bot's confirmation
-                if (data.includes('running')) {
-                    isSystemRunning = true;
-                    showMessage('Bot confirmed: System is now running.');
-                } else if (data.includes('stopped')) {
-                    isSystemRunning = false;
-                    showMessage('Bot confirmed: System is now stopped.');
-                } else {
-                    showMessage('Bot responded with: ' + event.data);
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            // Initial status check from the server API
+            async function initStatus() {
+                setButtonsDisabled(true);
+                showMessage('Syncing with server...');
+                const result = await apiCall('/api/status', 'GET');
+                if (result) {
+                    isSystemRunning = (result.status === 'running');
+                    updateUI();
+                    showMessage('System ready.');
                 }
-
-                // Re-enable buttons (as controlled by updateUI) and refresh UI
-                updateUI();
-                // Ensure buttons become responsive after status update (if not running a command)
-                setButtonsDisabled(false); 
-            });
-
-            // 3. Initial Status Request on load
-            // Temporarily disable buttons until the first status is received
-            setButtonsDisabled(true); 
-            Telegram.WebApp.sendData('/status');
-            showMessage('Requesting initial system status...');
-
+                setButtonsDisabled(false);
+            }
+            initStatus();
         } else {
             // Fallback for testing outside Telegram
             showMessage('Telegram WebApp is NOT available. Using local simulation mode.');
@@ -185,35 +163,30 @@
         // --- Event Listeners for UI Buttons ---
 
         // Event listener for the "Start" button
-        startBtn.addEventListener('click', () => {
-            if (window.Telegram && window.Telegram.WebApp && !startBtn.disabled) {
-                setButtonsDisabled(true); // Lock buttons
-                Telegram.WebApp.sendData('/up');
-                showMessage('Sending command: /up. Waiting for confirmation...');
-            } else if (!window.Telegram.WebApp) {
-                // Local simulation fallback
+        startBtn.addEventListener('click', async () => {
+            setButtonsDisabled(true);
+            showMessage('Starting system...');
+            
+            const result = await apiCall('/api/up');
+            if (result && result.status === 'running') {
                 isSystemRunning = true;
-                updateUI();
-                showMessage('Simulation: System started.');
+                showMessage('System is now running.');
             }
+            updateUI();
         });
 
         // Event listener for the "Stop" button
-        stopBtn.addEventListener('click', () => {
-            if (window.Telegram && window.Telegram.WebApp && !stopBtn.disabled) {
-                setButtonsDisabled(true); // Lock buttons
-                Telegram.WebApp.sendData('/down');
-                showMessage('Sending command: /down. Waiting for confirmation...');
-            } else if (!window.Telegram.WebApp) {
-                // Local simulation fallback
+        stopBtn.addEventListener('click', async () => {
+            setButtonsDisabled(true);
+            showMessage('Stopping system...');
+            
+            const result = await apiCall('/api/down');
+            if (result && result.status === 'stopped') {
                 isSystemRunning = false;
-                updateUI();
-                showMessage('Simulation: System stopped.');
+                showMessage('System is now stopped.');
             }
+            updateUI();
         });
-        
-        // Initial UI setup on page load (shows default state/loading message)
-        updateUI(); 
     </script>
 
 </body>
