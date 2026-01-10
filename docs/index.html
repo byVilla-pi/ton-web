@@ -52,6 +52,8 @@
     </div>
 
     <script>
+        // UPDATE THIS URL every time you restart your Cloudflare container
+        const API_BASE_URL = 'https://holland-decor-relative-desired.trycloudflare.com';
 
         // Get references to DOM elements
         const startBtn = document.getElementById('start-btn');
@@ -65,7 +67,7 @@
 
         // The API Helper Function
         async function apiCall(endpoint, method = 'POST') {
-            const url = `${window.location.origin}${endpoint}`;
+            const url = `${API_BASE_URL}${endpoint}`;
             try {
                 const response = await fetch(url, {
                     method: method,

@@ -4,6 +4,11 @@ Stored in the Github Repository:
 
 https://github.com/byVilla-pi/ton-web
 
+## Final Page
+
+```
+https://byvilla-pi.github.io/ton-web/
+```
 
 ## Documentation Site
 
